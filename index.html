@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RENCI Partner Locations</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+  >
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+  >
+  <style>
+    :root {
+      --ink: #102a43;
+      --bg: #f3f8fb;
+      --panel: #ffffff;
+      --accent: #007ea8;
+      --ok: #0a7f3f;
+      --warn: #b66a00;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top right, #dceef8 0%, var(--bg) 40%, #edf4f8 100%);
+      color: var(--ink);
+    }
+
+    .layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(16, 42, 67, 0.1);
+      padding: 14px 16px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 1.25rem;
+      letter-spacing: 0.01em;
+    }
+
+    .sub {
+      margin: 0 0 10px;
+      font-size: 0.92rem;
+      opacity: 0.85;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      border: 1px solid #d4e4ee;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      background: #f7fbfd;
+    }
+
+    .stat .label {
+      font-size: 0.78rem;
+      opacity: 0.75;
+    }
+
+    .stat .value {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-top: 2px;
+    }
+
+    .legend {
+      margin-top: 8px;
+      display: grid;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+
+    #map {
+      width: 100%;
+      min-height: 75vh;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(16, 42, 67, 0.1);
+    }
+
+    .loading,
+    .error {
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #9b1c1c;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        min-height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <h1>Partner Locations</h1>
+      <p class="sub">World map of organizations with resolved coordinates.</p>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Total Orgs</div>
+          <div class="value" id="totalOrgs">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">Mapped</div>
+          <div class="value" id="mappedOrgs">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">Resolved</div>
+          <div class="value" id="resolvedOrgs">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">Low Confidence</div>
+          <div class="value" id="lowConfidenceOrgs">-</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-row"><span class="dot ok"></span>Resolved location</div>
+        <div class="legend-row"><span class="dot warn"></span>Low-confidence location</div>
+      </div>
+
+      <p class="loading" id="statusText">Loading organization data...</p>
+      <p class="error" id="errorText" hidden></p>
+    </section>
+
+    <section id="map" aria-label="World map with partner organizations"></section>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    const map = L.map("map", {
+      worldCopyJump: true
+    }).setView([20, 0], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const clusterGroup = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 38
+    });
+    map.addLayer(clusterGroup);
+
+    function markerColor(status) {
+      return status === "low_confidence" ? "#b66a00" : "#0a7f3f";
+    }
+
+    function makeDotIcon(status) {
+      const color = markerColor(status);
+      return L.divIcon({
+        className: "",
+        html: `<span style="display:block;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 0 0 1px rgba(0,0,0,.2)"></span>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+      });
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = String(value);
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    clusterGroup.on("clustermouseover", (event) => {
+      const cluster = event.layer;
+      const children = cluster.getAllChildMarkers();
+      const total = children.length;
+      const previewCount = 6;
+      const names = children
+        .map((m) => m.options.orgLabel || "Organization")
+        .slice(0, previewCount)
+        .map((name) => `<div>${escapeHtml(name)}</div>`)
+        .join("");
+      const remaining = total > previewCount ? `<div>+${total - previewCount} more</div>` : "";
+
+      cluster.bindTooltip(
+        `<div style="min-width:160px"><strong>${total} organizations</strong>${names}${remaining}</div>`,
+        {
+          direction: "top",
+          offset: [0, -8],
+          opacity: 0.98,
+          sticky: true
+        }
+      ).openTooltip();
+    });
+
+    clusterGroup.on("clustermouseout", (event) => {
+      event.layer.closeTooltip();
+    });
+
+    async function render() {
+      const statusText = document.getElementById("statusText");
+      const errorText = document.getElementById("errorText");
+
+      try {
+        const dataUrl = new URL("./orgs.with-locations.json", window.location.href).toString();
+        const response = await fetch(dataUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const rawText = await response.text();
+        const cleanText = rawText.replace(/^\uFEFF/, "").trim();
+        let payload;
+        try {
+          payload = JSON.parse(cleanText);
+        } catch {
+          const preview = cleanText.slice(0, 120).replace(/\s+/g, " ");
+          const contentType = response.headers.get("content-type") || "unknown";
+          throw new Error(`Invalid JSON from ${dataUrl} (content-type: ${contentType}, starts with: \"${preview}\")`);
+        }
+        const orgs = payload?.data?.organizations || [];
+
+        const resolved = orgs.filter((o) => o.location?.status === "resolved");
+        const lowConfidence = orgs.filter((o) => o.location?.status === "low_confidence");
+        const mappable = [...resolved, ...lowConfidence].filter(
+          (o) => Number.isFinite(o.location?.latitude) && Number.isFinite(o.location?.longitude)
+        );
+
+        setText("totalOrgs", orgs.length);
+        setText("mappedOrgs", mappable.length);
+        setText("resolvedOrgs", resolved.length);
+        setText("lowConfidenceOrgs", lowConfidence.length);
+
+        const bounds = [];
+        for (const org of mappable) {
+          const loc = org.location;
+          const latLng = [loc.latitude, loc.longitude];
+          bounds.push(latLng);
+
+          const marker = L.marker(latLng, {
+            icon: makeDotIcon(loc.status),
+            orgLabel: org.short_name || org.name || "Organization"
+          });
+          marker.bindTooltip(org.short_name || org.name || "Organization", {
+            direction: "top",
+            offset: [0, -8],
+            opacity: 0.95
+          });
+          marker.bindPopup(`
+            <div style="min-width:220px">
+              <strong>${org.long_name || org.name}</strong><br>
+              <a href="${org.website}" target="_blank" rel="noreferrer">${org.website}</a><br>
+              <small>Status: ${loc.status}</small><br>
+              <small>${loc.place || ""}</small>
+            </div>
+          `);
+          clusterGroup.addLayer(marker);
+        }
+
+        if (bounds.length > 0) {
+          map.fitBounds(bounds, { padding: [24, 24] });
+        }
+
+        statusText.textContent = `Showing ${mappable.length} organizations with coordinates.`;
+      } catch (err) {
+        statusText.textContent = "Unable to load org location data.";
+        errorText.hidden = false;
+        errorText.textContent = `Error: ${err.message}. If running locally, serve this folder via HTTP.`;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
