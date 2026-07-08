@@ -186,6 +186,7 @@
     crossorigin=""
   ></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="./orgs.with-locations.inline.js"></script>
   <script>
     const map = L.map("map", {
       worldCopyJump: true
@@ -219,6 +220,41 @@
 
     function setText(id, value) {
       document.getElementById(id).textContent = String(value);
+    }
+
+    function parseJsonText(text, sourceLabel, contentType) {
+      const cleanText = String(text || "").replace(/^\uFEFF/, "").trim();
+      try {
+        return JSON.parse(cleanText);
+      } catch {
+        const preview = cleanText.slice(0, 120).replace(/\s+/g, " ");
+        throw new Error(
+          `Invalid JSON from ${sourceLabel} (content-type: ${contentType || "unknown"}, starts with: "${preview}")`
+        );
+      }
+    }
+
+    async function loadOrgData() {
+      const dataUrl = new URL("./orgs.with-locations.json", window.location.href).toString();
+      const diagnostics = [];
+
+      try {
+        const response = await fetch(dataUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const rawText = await response.text();
+        const payload = parseJsonText(rawText, dataUrl, response.headers.get("content-type"));
+        return { payload, source: dataUrl, diagnostics };
+      } catch (err) {
+        diagnostics.push(`Fetch failed for ${dataUrl}: ${err.message}`);
+      }
+
+      if (window.__ORGS_WITH_LOCATIONS__) {
+        return { payload: window.__ORGS_WITH_LOCATIONS__, source: "embedded-fallback", diagnostics };
+      }
+
+      throw new Error(`${diagnostics.join(" | ")} | No embedded fallback data found.`);
     }
 
     function escapeHtml(value) {
@@ -262,22 +298,7 @@
       const errorText = document.getElementById("errorText");
 
       try {
-        const dataUrl = new URL("./orgs.with-locations.json", window.location.href).toString();
-        const response = await fetch(dataUrl, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const rawText = await response.text();
-        const cleanText = rawText.replace(/^\uFEFF/, "").trim();
-        let payload;
-        try {
-          payload = JSON.parse(cleanText);
-        } catch {
-          const preview = cleanText.slice(0, 120).replace(/\s+/g, " ");
-          const contentType = response.headers.get("content-type") || "unknown";
-          throw new Error(`Invalid JSON from ${dataUrl} (content-type: ${contentType}, starts with: \"${preview}\")`);
-        }
+        const { payload, source, diagnostics } = await loadOrgData();
         const orgs = payload?.data?.organizations || [];
 
         const resolved = orgs.filter((o) => o.location?.status === "resolved");
@@ -321,11 +342,14 @@
           map.fitBounds(bounds, { padding: [24, 24] });
         }
 
-        statusText.textContent = `Showing ${mappable.length} organizations with coordinates.`;
+        statusText.textContent = `Showing ${mappable.length} organizations with coordinates (source: ${source}).`;
+        if (diagnostics.length) {
+          console.warn("Data loader diagnostics:", diagnostics.join(" | "));
+        }
       } catch (err) {
         statusText.textContent = "Unable to load org location data.";
         errorText.hidden = false;
-        errorText.textContent = `Error: ${err.message}. If running locally, serve this folder via HTTP.`;
+        errorText.textContent = `Error: ${err.message}. If running locally, serve this folder via HTTP from the repo root.`;
       }
     }
 
