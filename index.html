@@ -20,164 +20,100 @@
   >
   <style>
     :root {
-      --ink: #102a43;
-      --bg: #f3f8fb;
-      --panel: #ffffff;
-      --accent: #007ea8;
       --ok: #0a7f3f;
       --warn: #b66a00;
+      --error-bg: rgba(155, 28, 28, 0.92);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      margin: 0;
       font-family: "Avenir Next", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top right, #dceef8 0%, var(--bg) 40%, #edf4f8 100%);
-      color: var(--ink);
+      overflow: hidden;
+      background: #f3f8fb;
     }
 
-    .layout {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: minmax(260px, 320px) 1fr;
-      gap: 16px;
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
-
-    .panel {
-      background: var(--panel);
-      border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(16, 42, 67, 0.1);
-      padding: 14px 16px;
-    }
-
-    h1 {
-      margin: 0 0 4px;
-      font-size: 1.25rem;
-      letter-spacing: 0.01em;
-    }
-
-    .sub {
-      margin: 0 0 10px;
-      font-size: 0.92rem;
-      opacity: 0.85;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .stat {
-      border: 1px solid #d4e4ee;
-      border-radius: 8px;
-      padding: 8px;
-      text-align: center;
-      background: #f7fbfd;
-    }
-
-    .stat .label {
-      font-size: 0.78rem;
-      opacity: 0.75;
-    }
-
-    .stat .value {
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-top: 2px;
-    }
-
-    .legend {
-      margin-top: 8px;
-      display: grid;
-      gap: 6px;
-      font-size: 0.85rem;
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .dot.ok { background: var(--ok); }
-    .dot.warn { background: var(--warn); }
 
     #map {
       width: 100%;
-      min-height: 75vh;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 8px 24px rgba(16, 42, 67, 0.1);
+      height: 100%;
     }
 
-    .loading,
-    .error {
-      margin-top: 10px;
-      font-size: 0.9rem;
+    .status {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 500;
+      max-width: min(80%, 540px);
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      border-radius: 6px;
+      color: #fff;
+      background: rgba(16, 42, 67, 0.72);
+      backdrop-filter: blur(2px);
+      display: none;
     }
 
-    .error {
-      color: #9b1c1c;
+    .status.error {
+      display: block;
+      background: var(--error-bg);
     }
 
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      #map {
-        min-height: 60vh;
-      }
+    .map-unlock {
+      position: absolute;
+      inset: 0;
+      z-index: 550;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgba(16, 42, 67, 0.04), rgba(16, 42, 67, 0.12));
+      transition: opacity 0.2s ease;
     }
+
+    .map-unlock.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .map-unlock button {
+      pointer-events: auto;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 0.82rem;
+      color: #fff;
+      background: rgba(16, 42, 67, 0.9);
+      box-shadow: 0 6px 20px rgba(16, 42, 67, 0.3);
+      cursor: pointer;
+    }
+
   </style>
 </head>
 <body>
-  <main class="layout">
-    <section class="panel">
-      <h1>Partner Locations</h1>
-      <p class="sub">World map of organizations with resolved coordinates.</p>
-
-      <div class="stats">
-        <div class="stat">
-          <div class="label">Total Orgs</div>
-          <div class="value" id="totalOrgs">-</div>
-        </div>
-        <div class="stat">
-          <div class="label">Mapped</div>
-          <div class="value" id="mappedOrgs">-</div>
-        </div>
-        <div class="stat">
-          <div class="label">Resolved</div>
-          <div class="value" id="resolvedOrgs">-</div>
-        </div>
-        <div class="stat">
-          <div class="label">Low Confidence</div>
-          <div class="value" id="lowConfidenceOrgs">-</div>
-        </div>
-      </div>
-
-      <div class="legend">
-        <div class="legend-row"><span class="dot ok"></span>Resolved location</div>
-        <div class="legend-row"><span class="dot warn"></span>Low-confidence location</div>
-      </div>
-
-      <p class="loading" id="statusText">Loading organization data...</p>
-      <p class="error" id="errorText" hidden></p>
-    </section>
-
+  <main class="app">
     <section id="map" aria-label="World map with partner organizations"></section>
+    <div id="mapUnlock" class="map-unlock">
+      <button id="mapUnlockButton" type="button">Click or tap to enable map zoom and drag</button>
+    </div>
+    <div id="statusText" class="status" aria-live="polite"></div>
   </main>
 
   <script
@@ -189,7 +125,13 @@
   <script src="./orgs.with-locations.inline.js"></script>
   <script>
     const map = L.map("map", {
-      worldCopyJump: true
+      worldCopyJump: true,
+      scrollWheelZoom: false,
+      dragging: false,
+      touchZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false
     }).setView([20, 0], 2);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -204,6 +146,31 @@
     });
     map.addLayer(clusterGroup);
 
+    function setMapInteractive(enabled) {
+      if (enabled) {
+        map.scrollWheelZoom.enable();
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.doubleClickZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+      } else {
+        map.scrollWheelZoom.disable();
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+      }
+    }
+
+    const mapUnlock = document.getElementById("mapUnlock");
+    const mapUnlockButton = document.getElementById("mapUnlockButton");
+    mapUnlockButton.addEventListener("click", () => {
+      setMapInteractive(true);
+      mapUnlock.classList.add("hidden");
+    });
+
     function markerColor(status) {
       return status === "low_confidence" ? "#b66a00" : "#0a7f3f";
     }
@@ -216,10 +183,6 @@
         iconSize: [12, 12],
         iconAnchor: [6, 6]
       });
-    }
-
-    function setText(id, value) {
-      document.getElementById(id).textContent = String(value);
     }
 
     function parseJsonText(text, sourceLabel, contentType) {
@@ -295,7 +258,6 @@
 
     async function render() {
       const statusText = document.getElementById("statusText");
-      const errorText = document.getElementById("errorText");
 
       try {
         const { payload, source, diagnostics } = await loadOrgData();
@@ -306,11 +268,6 @@
         const mappable = [...resolved, ...lowConfidence].filter(
           (o) => Number.isFinite(o.location?.latitude) && Number.isFinite(o.location?.longitude)
         );
-
-        setText("totalOrgs", orgs.length);
-        setText("mappedOrgs", mappable.length);
-        setText("resolvedOrgs", resolved.length);
-        setText("lowConfidenceOrgs", lowConfidence.length);
 
         const bounds = [];
         for (const org of mappable) {
@@ -342,14 +299,15 @@
           map.fitBounds(bounds, { padding: [24, 24] });
         }
 
-        statusText.textContent = `Showing ${mappable.length} organizations with coordinates (source: ${source}).`;
+        statusText.className = "status";
+        statusText.textContent = "";
         if (diagnostics.length) {
           console.warn("Data loader diagnostics:", diagnostics.join(" | "));
         }
+        console.info(`Map loaded with ${mappable.length}/${orgs.length} organizations (source: ${source}).`);
       } catch (err) {
-        statusText.textContent = "Unable to load org location data.";
-        errorText.hidden = false;
-        errorText.textContent = `Error: ${err.message}. If running locally, serve this folder via HTTP from the repo root.`;
+        statusText.className = "status error";
+        statusText.textContent = `Unable to load org location data. ${err.message}`;
       }
     }
 
