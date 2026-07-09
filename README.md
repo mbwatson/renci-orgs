@@ -78,6 +78,115 @@ Run a build first (`just build`, `just run ...`, or `just dev`) so routes are re
 - `python3 vizgen.py build partners-map`
 - `python3 vizgen.py run staff-projects-graph --refresh`
 
+## Add a New Visualization
+
+### 1) Create a collection
+
+Create a folder: `collections/<collection-name>/`
+
+Add `collections/<collection-name>/collection.yaml`:
+
+```yaml
+name: <collection-name>
+
+source:
+  type: graphql
+  endpoint: https://website-content.apps.renci.org/graphql
+  endpoint_override_env: VIZGEN_GRAPHQL_ENDPOINT
+  query: collections/<collection-name>/query.graphql
+  output: collections/<collection-name>/raw.json
+
+transform:
+  file: collections/<collection-name>/transform.py
+  output: collections/<collection-name>/data.json
+```
+
+Add `collections/<collection-name>/query.graphql` (example):
+
+```graphql
+query ExampleCollection {
+  projects(page: { offset: 0, limit: 50 }) {
+    post_id
+    name
+  }
+}
+```
+
+Add `collections/<collection-name>/transform.py`:
+
+```python
+#!/usr/bin/env python3
+
+import argparse
+import json
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", default="collections/<collection-name>/raw.json")
+    parser.add_argument("--output", default="collections/<collection-name>/data.json")
+    args = parser.parse_args()
+
+    with open(args.input, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+
+    output = {
+        "meta": {"source": args.input},
+        "data": raw.get("data", {}),
+    }
+
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2)
+        f.write("\n")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Run collection steps:
+
+- `just fetch <collection-name>`
+- `just transform <collection-name>`
+
+### 2) Create a visualization
+
+Create a folder: `visualizations/<visualization-name>/`
+
+Add `visualizations/<visualization-name>/visualization.yaml`:
+
+```yaml
+name: <visualization-name>
+
+data:
+  collection: <collection-name>
+
+build:
+  entry: visualizations/<visualization-name>/index.html
+  output: dist/<visualization-name>
+```
+
+Add `visualizations/<visualization-name>/index.html`:
+
+- Build client-side only.
+- Read prepared data from `./data.json`.
+- Optional fallback: `window.__VIZGEN_INLINE_DATA__`.
+
+Build and test:
+
+- `just build <visualization-name>`
+- `just serve 8000`
+- Open `http://localhost:8000/` and click your visualization from the generated index page.
+
+### 3) Publish
+
+- Single visualization: `just publish <visualization-name>`
+- All visualizations: `just publish-all`
+
+For WordPress iframe embeds, use:
+
+- `https://mbwatson.github.io/renci-org-viz/dist/<visualization-name>/index.html`
+
 ## Publishing (VPN-Friendly)
 
 Because GraphQL is VPN-restricted, builds run locally and publish prebuilt static files.
