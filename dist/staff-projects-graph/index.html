@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Collaboration Graph</title>
+  <style>
+    :root {
+      --bg-0: #edf5ff;
+      --bg-1: #d8e8fb;
+      --ink: #112e46;
+      --muted: #4a657b;
+      --node-stroke: #f3fbf8;
+      --link: rgba(27, 74, 108, 0.28);
+      --panel: rgba(249, 252, 255, 0.9);
+      --focus: #fd8f2d;
+      --focus-ink: #8a4500;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 10% 0%, var(--bg-0), var(--bg-1));
+    }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #graph {
+      width: 100%;
+      height: 100%;
+    }
+
+    .panel {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 2;
+      width: min(92vw, 360px);
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid rgba(20, 66, 54, 0.12);
+      box-shadow: 0 8px 26px rgba(11, 48, 38, 0.12);
+      backdrop-filter: blur(3px);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title {
+      margin: 0 0 4px;
+      font-size: 1rem;
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+    }
+
+    .meta {
+      margin: 0 0 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .menu-toggle {
+      border: 1px solid rgba(20, 66, 54, 0.2);
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--ink);
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .panel.expanded .menu-toggle {
+      border-color: rgba(20, 66, 54, 0.36);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .controls {
+      display: none;
+      gap: 8px;
+      margin: 8px 0 0;
+    }
+
+    .panel.expanded .controls {
+      display: grid;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .range-wrap input,
+    .search-wrap input {
+      width: 100%;
+    }
+
+    input[type="range"] {
+      accent-color: #1b7fbf;
+    }
+
+    input[type="search"] {
+      border: 1px solid rgba(20, 66, 54, 0.18);
+      border-radius: 8px;
+      padding: 8px 9px;
+      font: inherit;
+      font-size: 0.83rem;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .legend-bar {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid rgba(20, 66, 54, 0.16);
+      padding: 3px 8px;
+      font-size: 0.74rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .status {
+      position: absolute;
+      left: 14px;
+      bottom: 48px;
+      z-index: 2;
+      max-width: min(92vw, 560px);
+      padding: 9px 11px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #fff;
+      background: rgba(148, 34, 41, 0.92);
+      display: none;
+    }
+
+    .status.error {
+      display: block;
+    }
+
+    @media (max-width: 720px) {
+      .panel {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <svg id="graph" aria-label="Staff collaboration force-directed graph"></svg>
+    <section id="controlPanel" class="panel" aria-live="polite">
+      <div class="panel-head">
+        <div>
+          <h1 class="title">Staff Collaboration</h1>
+          <p id="metaText" class="meta">Loading graph data...</p>
+        </div>
+        <button id="menuToggle" class="menu-toggle" type="button" aria-expanded="false" aria-label="Toggle graph controls">☰</button>
+      </div>
+      <div class="controls">
+        <label class="range-wrap" for="minWeight">
+          <span class="control-label">Minimum shared projects <strong id="minWeightValue">1</strong></span>
+          <input id="minWeight" type="range" min="1" max="1" step="1" value="1">
+        </label>
+        <label class="search-wrap" for="searchInput">
+          <span class="control-label">Search staff</span>
+          <input id="searchInput" type="search" placeholder="Type a name to highlight" autocomplete="off">
+        </label>
+      </div>
+    </section>
+    <div class="legend-bar" aria-hidden="true">
+      <span class="chip">Node size = project count</span>
+      <span class="chip">Node color = activity level</span>
+      <span class="chip">Drag + scroll to navigate</span>
+    </div>
+    <div id="statusText" class="status" aria-live="polite"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="./data.inline.js"></script>
+  <script>
+    function parseJsonText(text, sourceLabel, contentType) {
+      const cleanText = String(text || "").replace(/^\uFEFF/, "").trim();
+      try {
+        return JSON.parse(cleanText);
+      } catch {
+        const preview = cleanText.slice(0, 120).replace(/\s+/g, " ");
+        throw new Error(
+          `Invalid JSON from ${sourceLabel} (content-type: ${contentType || "unknown"}, starts with: "${preview}")`
+        );
+      }
+    }
+
+    async function loadGraphData() {
+      const dataUrl = new URL("./data.json", window.location.href).toString();
+      const diagnostics = [];
+      try {
+        const response = await fetch(dataUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const rawText = await response.text();
+        const payload = parseJsonText(rawText, dataUrl, response.headers.get("content-type"));
+        return { payload, source: dataUrl, diagnostics };
+      } catch (err) {
+        diagnostics.push(`Fetch failed for ${dataUrl}: ${err.message}`);
+      }
+
+      if (window.__VIZGEN_INLINE_DATA__) {
+        return { payload: window.__VIZGEN_INLINE_DATA__, source: "embedded-fallback", diagnostics };
+      }
+
+      throw new Error(`${diagnostics.join(" | ")} | No embedded fallback data found.`);
+    }
+
+    function drawGraph(payload) {
+      const svg = d3.select("#graph");
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      svg.attr("viewBox", `0 0 ${width} ${height}`);
+      svg.selectAll("*").remove();
+
+      const graphRoot = svg.append("g");
+      const linkLayer = graphRoot.append("g");
+      const nodeLayer = graphRoot.append("g");
+
+      const minWeightInput = document.getElementById("minWeight");
+      const minWeightValue = document.getElementById("minWeightValue");
+      const searchInput = document.getElementById("searchInput");
+      const controlPanel = document.getElementById("controlPanel");
+      const menuToggle = document.getElementById("menuToggle");
+
+      controlPanel.classList.remove("expanded");
+      menuToggle.setAttribute("aria-expanded", "false");
+      menuToggle.onclick = () => {
+        const expanded = controlPanel.classList.toggle("expanded");
+        menuToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      };
+
+      const nodes = (payload?.data?.nodes || []).map((n) => ({ ...n }));
+      const links = (payload?.data?.links || []).map((l) => ({ ...l, id: `${l.source}::${l.target}` }));
+
+      const nodeById = new Map(nodes.map((n) => [n.id, n]));
+      const allLinks = links
+        .filter((l) => nodeById.has(l.source) && nodeById.has(l.target))
+        .map((l) => ({ ...l }));
+
+      const neighbors = new Map(nodes.map((n) => [n.id, new Set()]));
+      for (const link of allLinks) {
+        neighbors.get(link.source).add(link.target);
+        neighbors.get(link.target).add(link.source);
+      }
+
+      const maxProjects = d3.max(nodes, (d) => d.project_count) || 1;
+      const radius = d3.scaleSqrt().domain([1, maxProjects]).range([4, 16]);
+      const maxWeight = d3.max(allLinks, (d) => d.weight) || 1;
+      const stroke = d3.scaleLinear().domain([1, maxWeight]).range([0.7, 3]);
+      const color = d3.scaleSequential(d3.interpolateYlGnBu).domain([1, maxProjects + 1]);
+
+      minWeightInput.max = String(Math.max(1, maxWeight));
+      if (Number(minWeightInput.value) > maxWeight) {
+        minWeightInput.value = String(Math.max(1, maxWeight));
+      }
+
+      let filteredLinks = [];
+      let link = linkLayer.selectAll("line");
+      const node = nodeLayer
+        .selectAll("circle")
+        .data(nodes)
+        .join("circle")
+        .attr("r", (d) => radius(d.project_count || 1))
+        .attr("fill", (d) => color(d.project_count || 1))
+        .attr("stroke", "var(--node-stroke)")
+        .attr("stroke-width", 1.3)
+        .call(
+          d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended)
+        );
+
+      node.append("title").text((d) => {
+        const collaboratorCount = (neighbors.get(d.id) || new Set()).size;
+        return `${d.label}\nProjects: ${d.project_count || 0}\nCollaborators: ${collaboratorCount}`;
+      });
+
+      const simulation = d3.forceSimulation(nodes)
+        .force("charge", d3.forceManyBody().strength(-52))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius((d) => radius(d.project_count || 1) + 3.2))
+        .force("link", d3.forceLink([]).id((d) => d.id))
+        .on("tick", ticked);
+
+      const zoom = d3.zoom()
+        .scaleExtent([0.35, 4])
+        .on("zoom", (event) => {
+          graphRoot.attr("transform", event.transform);
+        });
+      svg.call(zoom);
+
+      let hoverId = null;
+      let pinnedId = null;
+      let searchTerm = "";
+
+      function linkEndpointId(v) {
+        return typeof v === "object" ? v.id : v;
+      }
+
+      function focusSetFor(nodeId) {
+        if (!nodeId) {
+          return null;
+        }
+        const set = new Set([nodeId]);
+        for (const id of neighbors.get(nodeId) || []) {
+          set.add(id);
+        }
+        return set;
+      }
+
+      function searchSet() {
+        if (!searchTerm) {
+          return null;
+        }
+        const set = new Set();
+        for (const n of nodes) {
+          if ((n.label || "").toLowerCase().includes(searchTerm)) {
+            set.add(n.id);
+          }
+        }
+        return set.size ? set : null;
+      }
+
+      function applyHighlighting() {
+        const localFocus = focusSetFor(pinnedId || hoverId);
+        const matched = searchSet();
+
+        node
+          .attr("opacity", (d) => {
+            if (matched && !matched.has(d.id)) {
+              return 0.25;
+            }
+            if (localFocus && !localFocus.has(d.id)) {
+              return 0.2;
+            }
+            return 0.96;
+          })
+          .attr("stroke", (d) => {
+            if (pinnedId === d.id || (matched && matched.has(d.id))) {
+              return "var(--focus)";
+            }
+            return "var(--node-stroke)";
+          })
+          .attr("stroke-width", (d) => {
+            if (pinnedId === d.id || (matched && matched.has(d.id))) {
+              return 2.1;
+            }
+            return 1.2;
+          });
+
+        link
+          .attr("opacity", (d) => {
+            const sourceId = linkEndpointId(d.source);
+            const targetId = linkEndpointId(d.target);
+            if (matched && !(matched.has(sourceId) || matched.has(targetId))) {
+              return 0.06;
+            }
+            if (localFocus && !(localFocus.has(sourceId) && localFocus.has(targetId))) {
+              return 0.07;
+            }
+            return 0.78;
+          })
+          .attr("stroke", (d) => {
+            const sourceId = linkEndpointId(d.source);
+            const targetId = linkEndpointId(d.target);
+            if (pinnedId && (sourceId === pinnedId || targetId === pinnedId)) {
+              return "var(--focus)";
+            }
+            return "var(--link)";
+          });
+      }
+
+      function updateFilteredLinks() {
+        const threshold = Number(minWeightInput.value) || 1;
+        minWeightValue.textContent = String(threshold);
+
+        filteredLinks = allLinks.filter((d) => d.weight >= threshold);
+        link = linkLayer
+          .selectAll("line")
+          .data(filteredLinks, (d) => d.id)
+          .join("line")
+          .attr("stroke", "var(--link)")
+          .attr("stroke-width", (d) => stroke(d.weight));
+
+        link
+          .append("title")
+          .text((d) => `Shared projects: ${d.weight}`);
+
+        simulation
+          .force(
+            "link",
+            d3.forceLink(filteredLinks)
+              .id((d) => d.id)
+              .distance((d) => Math.max(26, 90 - d.weight * 8))
+              .strength((d) => Math.min(0.72, 0.08 + d.weight * 0.14))
+          )
+          .alpha(0.72)
+          .restart();
+
+        applyHighlighting();
+      }
+
+      node
+        .on("mouseover", (_, d) => {
+          hoverId = d.id;
+          applyHighlighting();
+        })
+        .on("mouseout", () => {
+          hoverId = null;
+          applyHighlighting();
+        })
+        .on("click", (_, d) => {
+          pinnedId = pinnedId === d.id ? null : d.id;
+          applyHighlighting();
+        });
+
+      minWeightInput.addEventListener("input", updateFilteredLinks);
+      searchInput.addEventListener("input", () => {
+        searchTerm = searchInput.value.trim().toLowerCase();
+        applyHighlighting();
+      });
+
+      updateFilteredLinks();
+
+      function ticked() {
+        link
+          .attr("x1", (d) => d.source.x)
+          .attr("y1", (d) => d.source.y)
+          .attr("x2", (d) => d.target.x)
+          .attr("y2", (d) => d.target.y);
+
+        node
+          .attr("cx", (d) => d.x)
+          .attr("cy", (d) => d.y);
+      }
+
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.2).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+
+      window.addEventListener("resize", () => {
+        const nextWidth = window.innerWidth;
+        const nextHeight = window.innerHeight;
+        svg.attr("viewBox", `0 0 ${nextWidth} ${nextHeight}`);
+        simulation.force("center", d3.forceCenter(nextWidth / 2, nextHeight / 2));
+        simulation.alpha(0.25).restart();
+      });
+    }
+
+    async function render() {
+      const statusText = document.getElementById("statusText");
+      const metaText = document.getElementById("metaText");
+      try {
+        const { payload } = await loadGraphData();
+        drawGraph(payload);
+
+        const meta = payload?.meta || {};
+        const staffCount = meta.staff_count ?? payload?.data?.nodes?.length ?? 0;
+        const linkCount = meta.link_count ?? payload?.data?.links?.length ?? 0;
+        const projectCount = meta.project_count ?? payload?.data?.projects?.length ?? 0;
+        metaText.textContent = `${staffCount} staff nodes, ${linkCount} collaboration links, ${projectCount} projects.`;
+      } catch (err) {
+        statusText.className = "status error";
+        statusText.textContent = `Unable to render collaboration graph. ${err.message}`;
+        metaText.textContent = "Graph data unavailable.";
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
