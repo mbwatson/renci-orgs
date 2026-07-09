@@ -8,6 +8,7 @@ check:
   test -f vizgen.config.yaml
   test -f index.html
   test -f scripts/build_embedded_fallback.py
+  test -f scripts/publish_gh_pages.sh
   test -d collections
   test -d visualizations
 

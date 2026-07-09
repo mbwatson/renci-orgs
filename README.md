@@ -1,6 +1,6 @@
-# renci-orgs
+# renci-org-viz
 
-Static partner organization map with a reproducible local data-prep pipeline.
+Static, embeddable RENCI visualizations with a reproducible fetch -> transform -> build pipeline.
 
 ## Prerequisites
 
@@ -26,19 +26,19 @@ Static partner organization map with a reproducible local data-prep pipeline.
 
 ## Workflow
 
-- `just list`: wrapper for `python3 vizgen.py list`.
-- `just fetch partners`: wrapper for `python3 vizgen.py fetch partners`.
-- `just transform partners`: wrapper for `python3 vizgen.py transform partners`.
-- `just refresh partners`: wrapper for fetch + transform for one collection.
-- `just build partners-map`: build one visualization.
+- `just list`: list configured collections and visualizations.
+- `just fetch <collection>`: fetch raw source data.
+- `just transform <collection>`: create prepared data artifact.
+- `just refresh <collection>`: fetch + transform for one collection.
+- `just build <visualization>`: build one visualization.
 - `just build`: build all visualizations.
-- `just run partners-map`: transform + build one visualization.
-- `just run-refresh partners-map`: fetch + transform + build one visualization.
+- `just run <visualization>`: transform + build one visualization.
+- `just run-refresh <visualization>`: fetch + transform + build one visualization.
 - `just serve`: start a local static server on port 8000.
 - `just serve 8001`: start server on a different port if 8000 is already in use.
 - `just dev`: run `run-refresh partners-map` then serve on port 8000.
-- `just dev partners-map 8001`: run `run-refresh` for a visualization, then serve on a chosen port.
-- `just publish staff-projects-graph`: build and publish one visualization to `origin/gh-pages`.
+- `just dev <visualization> <port>`: run `run-refresh` for one visualization and serve locally.
+- `just publish <visualization>`: build and publish one visualization to `origin/gh-pages`.
 - `just publish-all`: build and publish all visualizations to `origin/gh-pages`.
 - `just publish-all upstream gh-pages`: publish all visualizations to a specific remote/branch.
 - `just clean`: remove generated artifacts.
@@ -86,3 +86,9 @@ Because GraphQL is VPN-restricted, builds run locally and publish prebuilt stati
 - `just publish <visualization>` to push one built page and refreshed root index.
 - `just publish-all` to push all built pages and root index.
 - GitHub Pages then serves the static artifacts without needing GraphQL access.
+
+## Embedding
+
+- Preferred iframe target: `https://mbwatson.github.io/renci-org-viz/dist/<visualization>/index.html`
+- In WordPress shortcode plugins, keep attributes minimal first and add extras after verifying render.
+- If an embed suddenly shows something unexpected, like a 404 page, clear WordPress/CDN cache and retest in a private browser window.
