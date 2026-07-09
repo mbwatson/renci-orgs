@@ -20,8 +20,11 @@
   >
   <style>
     :root {
-      --ok: #00758d;
-      --warn: #b66a50;
+      --marker-resolved: #00758d;
+      --marker-lowconfidence: #8ea7c9;
+      --cluster-bg: #00758d;
+      --cluster-text: #ffffff;
+      --cluster-ring: rgba(16, 42, 67, 0.22);
       --error-bg: rgba(155, 28, 28, 0.92);
     }
 
@@ -73,6 +76,24 @@
     .status.error {
       display: block;
       background: var(--error-bg);
+    }
+
+    .cluster-icon {
+      background: transparent;
+      border: 0;
+    }
+
+    .cluster-badge {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--cluster-text);
+      background: var(--cluster-bg);
+      box-shadow: 0 0 0 6px var(--cluster-ring);
     }
 
     .map-unlock {
@@ -142,7 +163,16 @@
     const clusterGroup = L.markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
-      maxClusterRadius: 38
+      maxClusterRadius: 38,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        const size = count < 10 ? 34 : count < 100 ? 40 : 46;
+        return L.divIcon({
+          className: "cluster-icon",
+          html: `<span class="cluster-badge">${count}</span>`,
+          iconSize: [size, size]
+        });
+      }
     });
     map.addLayer(clusterGroup);
 
@@ -171,15 +201,19 @@
       mapUnlock.classList.add("hidden");
     });
 
+    const rootCss = getComputedStyle(document.documentElement);
+    const resolvedColor = rootCss.getPropertyValue("--marker-resolved").trim() || "#00758d";
+    const lowConfidenceColor = rootCss.getPropertyValue("--marker-lowconfidence").trim() || "#8ea7c9";
+
     function markerColor(status) {
-      return status === "low_confidence" ? "#b66a00" : "#0a7f3f";
+      return status === "low_confidence" ? lowConfidenceColor : resolvedColor;
     }
 
     function makeDotIcon(status) {
       const color = markerColor(status);
       return L.divIcon({
         className: "",
-        html: `<span style="display:block;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 0 0 1px rgba(0,0,0,.2)"></span>`,
+        html: `<span style="display:block;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 0 0 1px rgba(16,42,67,.35)"></span>`,
         iconSize: [12, 12],
         iconAnchor: [6, 6]
       });
