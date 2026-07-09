@@ -1,0 +1,8 @@
+name: partners-map
+
+data:
+  collection: partners
+
+build:
+  entry: visualizations/partners-map/index.html
+  output: dist/partners-map

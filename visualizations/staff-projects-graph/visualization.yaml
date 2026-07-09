@@ -1,0 +1,8 @@
+name: staff-projects-graph
+
+data:
+  collection: staff-projects
+
+build:
+  entry: visualizations/staff-projects-graph/index.html
+  output: dist/staff-projects-graph

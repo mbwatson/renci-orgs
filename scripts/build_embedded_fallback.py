@@ -6,12 +6,17 @@ from pathlib import Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build JS fallback data from org location JSON")
-    parser.add_argument("--input", default="orgs.with-locations.json", help="Input JSON file")
+    parser = argparse.ArgumentParser(description="Build JS inline fallback payload from JSON data")
+    parser.add_argument("--input", default="data.json", help="Input JSON file")
     parser.add_argument(
         "--output",
-        default="orgs.with-locations.inline.js",
-        help="Output JS file that sets window.__ORGS_WITH_LOCATIONS__",
+        default="data.inline.js",
+        help="Output JS file that sets a window-scoped fallback variable",
+    )
+    parser.add_argument(
+        "--var-name",
+        default="__VIZGEN_INLINE_DATA__",
+        help="Window variable name to assign (without window.)",
     )
     args = parser.parse_args()
 
@@ -21,11 +26,7 @@ def main() -> None:
     with input_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    js = (
-        "window.__ORGS_WITH_LOCATIONS__ = "
-        + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-        + ";\n"
-    )
+    js = f"window.{args.var_name} = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n"
 
     with output_path.open("w", encoding="utf-8") as f:
         f.write(js)

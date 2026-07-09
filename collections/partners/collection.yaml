@@ -1,0 +1,12 @@
+name: partners
+
+source:
+  type: graphql
+  endpoint: https://website-content.apps.renci.org/graphql
+  endpoint_override_env: VIZGEN_GRAPHQL_ENDPOINT
+  query: collections/partners/query.graphql
+  output: collections/partners/raw.json
+
+transform:
+  file: collections/partners/transform.py
+  output: collections/partners/data.json

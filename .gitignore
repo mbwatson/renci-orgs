@@ -1,1 +1,6 @@
-orgs.with-locations.json
+collections/*/raw.json
+collections/*/data.json
+cache/*.json
+dist/
+__pycache__/
+*.pyc

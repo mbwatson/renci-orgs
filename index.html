@@ -3,349 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RENCI Partner Locations</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  >
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-  >
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-  >
+  <title>vizgen Visualizations</title>
   <style>
     :root {
-      --marker-resolved: #00758d;
-      --marker-lowconfidence: #8ea7c9;
-      --cluster-bg: #00758d;
-      --cluster-text: #ffffff;
-      --cluster-ring: rgba(16, 42, 67, 0.22);
-      --error-bg: rgba(155, 28, 28, 0.92);
+      --bg-a: #edf5fb;
+      --bg-b: #dfeef8;
+      --ink: #12324a;
+      --muted: #486278;
+      --line: rgba(21, 58, 85, 0.16);
+      --card: rgba(255, 255, 255, 0.86);
+      --link: #0f6ba8;
+      --ready: #0a7d4e;
+      --missing: #98610a;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
     body {
-      width: 100%;
-      height: 100%;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(145deg, var(--bg-a), var(--bg-b));
+      padding: 22px;
+    }
+    .shell { max-width: 960px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; }
+    .intro { margin: 0 0 18px; color: var(--muted); }
+    .viz-list {
+      list-style: none;
       margin: 0;
       padding: 0;
-    }
-
-    body {
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
-      overflow: hidden;
-      background: #f3f8fb;
-    }
-
-    .app {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-
-    #map {
-      width: 100%;
-      height: 100%;
-    }
-
-    .status {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
-      z-index: 500;
-      max-width: min(80%, 540px);
-      padding: 8px 10px;
-      font-size: 0.78rem;
-      line-height: 1.35;
-      border-radius: 6px;
-      color: #fff;
-      background: rgba(16, 42, 67, 0.72);
-      backdrop-filter: blur(2px);
-      display: none;
-    }
-
-    .status.error {
-      display: block;
-      background: var(--error-bg);
-    }
-
-    .cluster-icon {
-      background: transparent;
-      border: 0;
-    }
-
-    .cluster-badge {
       display: grid;
-      place-items: center;
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      font-weight: 700;
-      font-size: 0.8rem;
-      color: var(--cluster-text);
-      background: var(--cluster-bg);
-      box-shadow: 0 0 0 6px var(--cluster-ring);
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
-
-    .map-unlock {
-      position: absolute;
-      inset: 0;
-      z-index: 550;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      background: linear-gradient(to bottom, rgba(16, 42, 67, 0.04), rgba(16, 42, 67, 0.12));
-      transition: opacity 0.2s ease;
+    .viz-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 6px 16px rgba(17, 53, 77, 0.08);
     }
-
-    .map-unlock.hidden {
-      opacity: 0;
-      visibility: hidden;
-    }
-
-    .map-unlock button {
-      pointer-events: auto;
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font: inherit;
-      font-size: 0.82rem;
-      color: #fff;
-      background: rgba(16, 42, 67, 0.9);
-      box-shadow: 0 6px 20px rgba(16, 42, 67, 0.3);
-      cursor: pointer;
-    }
-
+    .viz-card h2 { margin: 0 0 8px; font-size: 1rem; }
+    .meta { margin: 0 0 6px; color: var(--muted); font-size: 0.85rem; }
+    .status { margin: 0 0 9px; font-size: 0.82rem; font-weight: 600; }
+    .status.ready { color: var(--ready); }
+    .status.missing { color: var(--missing); }
+    a { color: var(--link); text-decoration: none; font-weight: 600; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <main class="app">
-    <section id="map" aria-label="World map with partner organizations"></section>
-    <div id="mapUnlock" class="map-unlock">
-      <button id="mapUnlockButton" type="button">Click or tap to enable map zoom and drag</button>
-    </div>
-    <div id="statusText" class="status" aria-live="polite"></div>
+  <main class="shell">
+    <h1>Visualization Index</h1>
+    <p class="intro">Routes are generated from visualization configs. Build status reflects whether each `dist/<name>/index.html` exists.</p>
+    <ul class="viz-list">
+      <li class="viz-card"><h2>partners-map</h2><p class="meta">id: <code>partners-map</code></p><p class="meta">collection: <code>partners</code></p><p class="status ready">Ready</p><a href="./dist/partners-map/">Open visualization</a></li>
+      <li class="viz-card"><h2>staff-projects-graph</h2><p class="meta">id: <code>staff-projects-graph</code></p><p class="meta">collection: <code>staff-projects</code></p><p class="status ready">Ready</p><a href="./dist/staff-projects-graph/">Open visualization</a></li>
+    </ul>
   </main>
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="./orgs.with-locations.inline.js"></script>
-  <script>
-    const map = L.map("map", {
-      worldCopyJump: true,
-      scrollWheelZoom: false,
-      dragging: false,
-      touchZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false
-    }).setView([20, 0], 2);
-
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(map);
-
-    const clusterGroup = L.markerClusterGroup({
-      showCoverageOnHover: false,
-      spiderfyOnMaxZoom: true,
-      maxClusterRadius: 38,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        const size = count < 10 ? 34 : count < 100 ? 40 : 46;
-        return L.divIcon({
-          className: "cluster-icon",
-          html: `<span class="cluster-badge">${count}</span>`,
-          iconSize: [size, size]
-        });
-      }
-    });
-    map.addLayer(clusterGroup);
-
-    function setMapInteractive(enabled) {
-      if (enabled) {
-        map.scrollWheelZoom.enable();
-        map.dragging.enable();
-        map.touchZoom.enable();
-        map.doubleClickZoom.enable();
-        map.boxZoom.enable();
-        map.keyboard.enable();
-      } else {
-        map.scrollWheelZoom.disable();
-        map.dragging.disable();
-        map.touchZoom.disable();
-        map.doubleClickZoom.disable();
-        map.boxZoom.disable();
-        map.keyboard.disable();
-      }
-    }
-
-    const mapUnlock = document.getElementById("mapUnlock");
-    const mapUnlockButton = document.getElementById("mapUnlockButton");
-    mapUnlockButton.addEventListener("click", () => {
-      setMapInteractive(true);
-      mapUnlock.classList.add("hidden");
-    });
-
-    const rootCss = getComputedStyle(document.documentElement);
-    const resolvedColor = rootCss.getPropertyValue("--marker-resolved").trim() || "#00758d";
-    const lowConfidenceColor = rootCss.getPropertyValue("--marker-lowconfidence").trim() || "#8ea7c9";
-
-    function markerColor(status) {
-      return status === "low_confidence" ? lowConfidenceColor : resolvedColor;
-    }
-
-    function makeDotIcon(status) {
-      const color = markerColor(status);
-      return L.divIcon({
-        className: "",
-        html: `<span style="display:block;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 0 0 1px rgba(16,42,67,.35)"></span>`,
-        iconSize: [12, 12],
-        iconAnchor: [6, 6]
-      });
-    }
-
-    function parseJsonText(text, sourceLabel, contentType) {
-      const cleanText = String(text || "").replace(/^\uFEFF/, "").trim();
-      try {
-        return JSON.parse(cleanText);
-      } catch {
-        const preview = cleanText.slice(0, 120).replace(/\s+/g, " ");
-        throw new Error(
-          `Invalid JSON from ${sourceLabel} (content-type: ${contentType || "unknown"}, starts with: "${preview}")`
-        );
-      }
-    }
-
-    async function loadOrgData() {
-      const dataUrl = new URL("./orgs.with-locations.json", window.location.href).toString();
-      const diagnostics = [];
-
-      try {
-        const response = await fetch(dataUrl, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const rawText = await response.text();
-        const payload = parseJsonText(rawText, dataUrl, response.headers.get("content-type"));
-        return { payload, source: dataUrl, diagnostics };
-      } catch (err) {
-        diagnostics.push(`Fetch failed for ${dataUrl}: ${err.message}`);
-      }
-
-      if (window.__ORGS_WITH_LOCATIONS__) {
-        return { payload: window.__ORGS_WITH_LOCATIONS__, source: "embedded-fallback", diagnostics };
-      }
-
-      throw new Error(`${diagnostics.join(" | ")} | No embedded fallback data found.`);
-    }
-
-    function escapeHtml(value) {
-      return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
-
-    clusterGroup.on("clustermouseover", (event) => {
-      const cluster = event.layer;
-      const children = cluster.getAllChildMarkers();
-      const total = children.length;
-      const previewCount = 6;
-      const names = children
-        .map((m) => m.options.orgLabel || "Organization")
-        .slice(0, previewCount)
-        .map((name) => `<div>${escapeHtml(name)}</div>`)
-        .join("");
-      const remaining = total > previewCount ? `<div>+${total - previewCount} more</div>` : "";
-
-      cluster.bindTooltip(
-        `<div style="min-width:160px"><strong>${total} organizations</strong>${names}${remaining}</div>`,
-        {
-          direction: "top",
-          offset: [0, -8],
-          opacity: 0.98,
-          sticky: true
-        }
-      ).openTooltip();
-    });
-
-    clusterGroup.on("clustermouseout", (event) => {
-      event.layer.closeTooltip();
-    });
-
-    async function render() {
-      const statusText = document.getElementById("statusText");
-
-      try {
-        const { payload, source, diagnostics } = await loadOrgData();
-        const orgs = payload?.data?.organizations || [];
-
-        const resolved = orgs.filter((o) => o.location?.status === "resolved");
-        const lowConfidence = orgs.filter((o) => o.location?.status === "low_confidence");
-        const mappable = [...resolved, ...lowConfidence].filter(
-          (o) => Number.isFinite(o.location?.latitude) && Number.isFinite(o.location?.longitude)
-        );
-
-        const bounds = [];
-        for (const org of mappable) {
-          const loc = org.location;
-          const latLng = [loc.latitude, loc.longitude];
-          bounds.push(latLng);
-
-          const marker = L.marker(latLng, {
-            icon: makeDotIcon(loc.status),
-            orgLabel: org.short_name || org.name || "Organization"
-          });
-          marker.bindTooltip(org.short_name || org.name || "Organization", {
-            direction: "top",
-            offset: [0, -8],
-            opacity: 0.95
-          });
-          marker.bindPopup(`
-            <div style="min-width:220px">
-              <strong>${org.long_name || org.name}</strong><br>
-              <a href="${org.website}" target="_blank" rel="noreferrer">${org.website}</a><br>
-              <small>Status: ${loc.status}</small><br>
-              <small>${loc.place || ""}</small>
-            </div>
-          `);
-          clusterGroup.addLayer(marker);
-        }
-
-        if (bounds.length > 0) {
-          map.fitBounds(bounds, { padding: [24, 24] });
-        }
-
-        statusText.className = "status";
-        statusText.textContent = "";
-        if (diagnostics.length) {
-          console.warn("Data loader diagnostics:", diagnostics.join(" | "));
-        }
-        console.info(`Map loaded with ${mappable.length}/${orgs.length} organizations (source: ${source}).`);
-      } catch (err) {
-        statusText.className = "status error";
-        statusText.textContent = `Unable to load org location data. ${err.message}`;
-      }
-    }
-
-    render();
-  </script>
 </body>
 </html>

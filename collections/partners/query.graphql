@@ -1,0 +1,10 @@
+query Partners {
+  organizations(page: { offset: 0, limit: 300 }) {
+    name
+    long_name
+    short_name
+    website
+    post_id
+    slug
+  }
+}

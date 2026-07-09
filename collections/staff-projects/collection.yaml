@@ -1,0 +1,12 @@
+name: staff-projects
+
+source:
+  type: graphql
+  endpoint: https://website-content.apps.renci.org/graphql
+  endpoint_override_env: VIZGEN_GRAPHQL_ENDPOINT
+  query: collections/staff-projects/query.graphql
+  output: collections/staff-projects/raw.json
+
+transform:
+  file: collections/staff-projects/transform.py
+  output: collections/staff-projects/data.json

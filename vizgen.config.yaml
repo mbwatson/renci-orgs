@@ -1,0 +1,8 @@
+paths:
+  collections_dir: collections
+  visualizations_dir: visualizations
+  dist_dir: dist
+  cache_dir: cache
+
+defaults:
+  graphql_timeout_seconds: 30

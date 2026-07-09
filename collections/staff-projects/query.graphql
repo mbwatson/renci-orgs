@@ -1,0 +1,10 @@
+query StaffProjects {
+  projects(page: { offset: 0, limit: 500 }) {
+    post_id
+    name
+    contributors {
+      post_id
+      name
+    }
+  }
+}
